@@ -8,6 +8,7 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
+    "grant-access": "npm run build && node lib/admin/grantAccess.js",
     "logs": "firebase functions:log"
   },
   "engines": {

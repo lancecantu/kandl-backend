@@ -2,18 +2,46 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // No client reaches Firestore directly. Everything goes through the
-    // callable functions, which use the Admin SDK and bypass these rules, so
-    // denying all client access costs nothing and means a leaked client
-    // config grants no data.
-    //
-    // When a client-read collection is added, scope it to its owner rather
-    // than loosening this rule, e.g.
-    //
-    //   match /users/{uid}/{document=**} {
-    //     allow read, write: if request.auth != null
-    //                        && request.auth.uid == uid;
-    //   }
+
+    // The Firebase client config ships inside the APK and the Android repo
+    // is public, so anyone can create an account in this project. Being
+    // signed in therefore means nothing on its own: this claim, set out of
+    // band by `npm run grant-access`, is what actually grants access.
+    function isAllowed() {
+      return request.auth != null
+             && request.auth.token.kandlAccess == true;
+    }
+
+    // recipes and mealPlans are top-level collections that record their
+    // owner in a userId field rather than nesting under it, so ownership has
+    // to be checked field-wise. Writes check both the stored and the
+    // incoming document: checking only the stored one would let a caller
+    // hand a document to somebody else, and only the incoming one would let
+    // them overwrite somebody else's.
+    function owns(doc) {
+      return doc.userId == request.auth.uid;
+    }
+
+    // Listing is only safe because both clients filter on userId; a query
+    // without that filter fails these rules rather than returning a partial
+    // result, which is the intended behaviour.
+    match /recipes/{recipeId} {
+      allow read:   if isAllowed() && owns(resource.data);
+      allow create: if isAllowed() && owns(request.resource.data);
+      allow update: if isAllowed() && owns(resource.data)
+                    && owns(request.resource.data);
+      allow delete: if isAllowed() && owns(resource.data);
+    }
+
+    match /mealPlans/{planId} {
+      allow read:   if isAllowed() && owns(resource.data);
+      allow create: if isAllowed() && owns(request.resource.data);
+      allow update: if isAllowed() && owns(resource.data)
+                    && owns(request.resource.data);
+      allow delete: if isAllowed() && owns(resource.data);
+    }
+
+    // Collections added later stay closed until they get a rule above.
     match /{document=**} {
       allow read, write: if false;
     }

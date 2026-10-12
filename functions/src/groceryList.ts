@@ -2,6 +2,7 @@ import {logger} from "firebase-functions";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
+import {requireAllowedUser} from "./access";
 import type {
   GenerateGroceryListRequest,
   GenerateGroceryListResponse,
@@ -331,17 +332,12 @@ export const generateGroceryList = onCall<
   // would cut off a slow one mid-stream.
   timeoutSeconds: 120,
 }, async (request, response) => {
-  if (!request.auth) {
-    throw new HttpsError(
-      "unauthenticated",
-      "Sign in to generate a grocery list.",
-    );
-  }
+  const uid = requireAllowedUser(request);
 
   const meals = parseMeals(request.data);
 
   logger.info("Generating grocery list", {
-    uid: request.auth.uid,
+    uid,
     mealCount: meals.length,
     streaming: request.acceptsStreaming,
   });
@@ -386,7 +382,7 @@ export const generateGroceryList = onCall<
 
     if (final.stop_reason === "max_tokens") {
       logger.warn("Grocery list hit the output cap and may be cut short", {
-        uid: request.auth.uid,
+        uid,
       });
     }
 

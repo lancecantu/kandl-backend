@@ -79,3 +79,9 @@ node_modules/
 # IDE / editor state. Machine-specific, and leaks local paths.
 .vs/
 .idea/
+
+# Service account keys. These are real credentials that bypass every rule
+# and claim in this repo; keep them outside the working tree entirely.
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+service-account*.json
