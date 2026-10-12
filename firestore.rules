@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // No client reaches Firestore directly. Everything goes through the
+    // callable functions, which use the Admin SDK and bypass these rules, so
+    // denying all client access costs nothing and means a leaked client
+    // config grants no data.
+    //
+    // When a client-read collection is added, scope it to its owner rather
+    // than loosening this rule, e.g.
+    //
+    //   match /users/{uid}/{document=**} {
+    //     allow read, write: if request.auth != null
+    //                        && request.auth.uid == uid;
+    //   }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
